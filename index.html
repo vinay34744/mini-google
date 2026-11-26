@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini Google 1998 — A little search engine with a big idea</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #202b3c;
+      --muted: #647083;
+      --blue: #3156c8;
+      --line: #e4e9f1;
+      --paper: #fff;
+      --canvas: #f6f8fc;
+      --serif: Georgia, "Times New Roman", serif;
+      --sans: Arial, Helvetica, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { background: var(--canvas); }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 50% -18%, rgba(255, 222, 164, .38), transparent 42rem),
+        var(--canvas);
+      font: 16px/1.55 var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input { font: inherit; }
+    button:focus-visible, a:focus-visible, input:focus-visible {
+      outline: 3px solid rgba(49, 86, 200, .38);
+      outline-offset: 3px;
+    }
+    .container { width: min(1120px, calc(100% - 48px)); margin: 0 auto; }
+    .header {
+      position: relative;
+      padding: clamp(54px, 9vw, 100px) 0 32px;
+      text-align: center;
+    }
+    .logo {
+      margin: 0;
+      font: 700 clamp(42px, 8vw, 70px)/1.08 var(--serif);
+      letter-spacing: -3.5px;
+      user-select: none;
+    }
+    .g-blue { color: #3156c8; }
+    .g-red { color: #df493e; }
+    .g-yellow { color: #e9a900; }
+    .g-green { color: #19835b; }
+    .edition-badge {
+      display: inline-block;
+      margin: 17px 0 10px;
+      padding: 5px 10px;
+      border: 1px solid #e4c88a;
+      border-radius: 4px;
+      color: #735417;
+      background: #fff7e5;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin: 0 0 25px 8px;
+      color: var(--muted);
+      font-size: 11px;
+      vertical-align: middle;
+    }
+    .status-badge::before {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #38a273;
+      content: "";
+    }
+    .tagline {
+      margin: 0 0 28px;
+      color: #4b5668;
+      font: italic clamp(17px, 2.5vw, 21px)/1.4 var(--serif);
+    }
+    .search-box-wrapper { width: min(690px, 100%); margin: 0 auto; }
+    .search-form {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px;
+      border: 1px solid #e1e6ef;
+      border-radius: 15px;
+      background: var(--paper);
+      box-shadow: 0 12px 34px rgba(34, 52, 89, .09), 0 2px 6px rgba(34, 52, 89, .04);
+      transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+    }
+    .search-form:focus-within {
+      transform: translateY(-2px);
+      border-color: #91a8ed;
+      box-shadow: 0 15px 38px rgba(49, 86, 200, .14), 0 0 0 4px rgba(49, 86, 200, .08);
+    }
+    .search-input-wrap { position: relative; flex: 1; min-width: 0; }
+    .search-icon {
+      position: absolute;
+      top: 50%;
+      left: 16px;
+      width: 19px;
+      height: 19px;
+      color: #78849a;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+    .search-input {
+      width: 100%;
+      min-width: 0;
+      height: 50px;
+      padding: 0 14px 0 47px;
+      border: 0;
+      border-radius: 9px;
+      color: var(--ink);
+      background: transparent;
+      font-size: 16px;
+    }
+    .search-input::placeholder { color: #8993a3; }
+    .search-input:focus { outline: none; }
+    .search-btn {
+      display: inline-flex;
+      min-height: 50px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 0 22px;
+      border: 0;
+      border-radius: 10px;
+      color: #fff;
+      background: #3156c8;
+      box-shadow: 0 3px 8px rgba(49, 86, 200, .22);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+    .search-btn:hover { background: #2446ad; box-shadow: 0 6px 14px rgba(49, 86, 200, .25); transform: translateY(-1px); }
+    .search-btn:active { transform: translateY(0); }
+    .search-btn:disabled { cursor: wait; opacity: .75; }
+    .sample-queries { margin-top: 15px; color: var(--muted); font-size: 13px; }
+    .sample-chip {
+      min-height: 32px;
+      padding: 4px 7px;
+      border: 0;
+      border-radius: 5px;
+      color: #3156c8;
+      background: transparent;
+      font-size: inherit;
+      cursor: pointer;
+      transition: color .15s ease, background .15s ease;
+    }
+    .sample-chip:hover { color: #203d9c; background: #e9eefc; }
+    .sample-separator { color: #bcc4d0; }
+    .loading-status {
+      display: flex;
+      min-height: 24px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .loading-status[hidden] { display: none; }
+    .spinner {
+      width: 15px;
+      height: 15px;
+      border: 2px solid #d5def7;
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .message-container { width: min(690px, 100%); margin: 18px auto 0; }
+    .message-box {
+      padding: 12px 16px;
+      border: 1px solid;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+    .message-warning { border-color: #efd99f; color: #735417; background: #fff8e9; }
+    .message-info { border-color: #dce5fc; color: #344b83; background: #f0f4ff; }
+    .welcome-card {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 18px;
+      align-items: start;
+      width: min(690px, 100%);
+      margin: 12px auto 0;
+      padding: 22px 24px;
+      border: 1px solid rgba(228, 233, 241, .9);
+      border-radius: 15px;
+      text-align: left;
+      background: rgba(255, 255, 255, .76);
+      box-shadow: 0 8px 24px rgba(34, 52, 89, .04);
+    }
+    .welcome-card[hidden] { display: none; }
+    .welcome-mark {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border-radius: 12px;
+      color: #3156c8;
+      background: #edf1ff;
+      font: 700 22px var(--serif);
+    }
+    .welcome-card h2 { margin: 0 0 3px; font: 700 17px var(--serif); }
+    .welcome-card p { margin: 0; color: var(--muted); font-size: 13px; }
+    #resultsMain { padding-bottom: 50px; }
+    .results-enter { animation: rise-in .35s ease both; }
+    .results-summary {
+      margin: 19px 0 15px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .insight-box {
+      margin: 0 0 20px;
+      padding: 16px 19px;
+      border: 1px solid #cce8da;
+      border-radius: 12px;
+      color: #365747;
+      background: #f0f8f3;
+      font-size: 13.5px;
+    }
+    .insight-title { margin-bottom: 4px; color: #17613e; font-weight: 700; }
+    .results-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+    .column { min-width: 0; }
+    .column-header {
+      min-height: 112px;
+      margin-bottom: 12px;
+      padding: 19px 20px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: var(--paper);
+      box-shadow: 0 3px 10px rgba(34, 52, 89, .035);
+    }
+    .column-kicker {
+      display: block;
+      margin-bottom: 5px;
+      color: #8b6a1e;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.1px;
+    }
+    .pagerank-way .column-kicker { color: #28714e; }
+    .column-header h2 { margin: 0 0 3px; color: var(--ink); font: 700 20px/1.25 var(--serif); }
+    .column-header p { margin: 0; color: var(--muted); font-size: 13px; }
+    .result-card {
+      margin-bottom: 11px;
+      padding: 17px 18px 15px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+      box-shadow: 0 3px 9px rgba(34, 52, 89, .035);
+      animation: rise-in .38s both;
+      animation-delay: calc(var(--card-index, 0) * 35ms);
+      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+    .result-card:hover { transform: translateY(-2px); border-color: #cbd5e8; box-shadow: 0 9px 22px rgba(34, 52, 89, .09); }
+    @keyframes rise-in { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+    .result-card-top { display: flex; min-width: 0; align-items: flex-start; gap: 9px; margin-bottom: 4px; }
+    .page-badge {
+      flex: 0 0 auto;
+      margin-top: 2px;
+      padding: 2px 7px;
+      border: 1px solid #e2e7f0;
+      border-radius: 6px;
+      color: #59667b;
+      background: #f6f8fb;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .2px;
+    }
+    .result-title { min-width: 0; margin: 0; font-size: 16px; line-height: 1.4; overflow-wrap: anywhere; }
+    .result-title a { color: #3156c8; text-decoration: none; }
+    .result-title a:hover { color: #df493e; text-decoration: underline; }
+    .result-rank-num {
+      flex: 0 0 auto;
+      margin-left: auto;
+      padding: 2px 7px;
+      border-radius: 999px;
+      color: #667287;
+      background: #f2f4f8;
+      font-size: 11px;
+    }
+    .result-url {
+      display: block;
+      margin: 0 0 11px;
+      color: #28714e;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+      text-decoration: none;
+    }
+    .result-url:hover { text-decoration: underline; }
+    .metric-badge {
+      display: inline-flex;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 4px 9px;
+      border: 1px solid;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge-old { border-color: #f0dfb6; color: #765714; background: #fff8e8; }
+    .badge-pagerank { border-color: #cce8da; color: #226445; background: #eff8f3; font-size: 12px; }
+    .pagerank-meter {
+      height: 5px;
+      margin: -4px 0 11px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: #edf2ef;
+    }
+    .pagerank-meter span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #72bd92, #24835a); }
+    .result-text {
+      margin: 0;
+      padding-top: 10px;
+      border-top: 1px solid #edf0f5;
+      color: #465267;
+      font-size: 13px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+    .result-links-info { margin-top: 8px; color: #8791a0; font-size: 11px; }
+    @media (max-width: 720px) {
+      .container { width: min(100% - 32px, 560px); }
+      .header { padding-top: 54px; }
+      .results-columns { gap: 16px; }
+      .column-header { padding: 16px; }
+      .result-card { padding: 15px; }
+    }
+    @media (max-width: 600px) {
+      .container { width: calc(100% - 32px); }
+      .header { padding: 42px 0 24px; }
+      .logo { letter-spacing: -2px; }
+      .edition-badge { margin-top: 14px; }
+      .status-badge { margin-bottom: 21px; }
+      .tagline { margin-bottom: 22px; }
+      .search-form { gap: 5px; padding: 5px; border-radius: 13px; }
+      .search-input { height: 47px; padding-left: 39px; font-size: 15px; }
+      .search-icon { left: 12px; width: 17px; height: 17px; }
+      .search-btn { min-height: 47px; padding: 0 13px; font-size: 13px; }
+      .sample-queries { line-height: 2; }
+      .welcome-card { gap: 13px; padding: 17px; }
+      .results-columns { grid-template-columns: minmax(0, 1fr); gap: 17px; }
+      .column-header { min-height: 0; }
+      .results-summary { margin-top: 10px; }
+    }
+    @media (max-width: 380px) {
+      .search-btn { padding: 0 10px; }
+      .search-btn-label { font-size: 12px; }
+      .result-title { font-size: 15px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header Section with 1998 Google Style Logo -->
+    <header class="header">
+      <h1 class="logo">
+        <span class="g-blue">M</span><span class="g-red">i</span><span class="g-yellow">n</span><span class="g-blue">i</span>
+        <span> </span>
+        <span class="g-blue">G</span><span class="g-red">o</span><span class="g-yellow">o</span><span class="g-blue">g</span><span class="g-green">l</span><span class="g-red">e</span>
+        <span> </span>
+        <span class="g-blue">1</span><span class="g-red">9</span><span class="g-yellow">9</span><span class="g-green">8</span>
+      </h1>
+      <div>
+        <span class="edition-badge">1998 EDITION</span>
+        <span id="statusBadge" class="status-badge">Calculating PageRank...</span>
+      </div>
+      <p class="tagline">A little search engine with a big idea.</p>
+
+      <!-- Search Form -->
+      <div class="search-box-wrapper">
+        <form class="search-form" id="searchForm" onsubmit="handleSearch(event)" role="search">
+          <div class="search-input-wrap">
+            <svg class="search-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+              <circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.8"></circle>
+              <path d="m16 16 4.2 4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+            </svg>
+            <input
+              type="search"
+              id="searchInput"
+              class="search-input"
+              placeholder="Search pages for pizza, food, Pune..."
+              autocomplete="off"
+              aria-label="Search six sample web pages"
+            />
+          </div>
+          <button type="submit" id="searchButton" class="search-btn">
+            <span class="search-btn-label">Search</span>
+            <span aria-hidden="true">→</span>
+          </button>
+        </form>
+
+        <!-- Quick click suggestions for testing -->
+        <div class="sample-queries" aria-label="Suggested searches">
+          Try:
+          <button type="button" class="sample-chip" onclick="quickSearch('pizza')">pizza</button><span class="sample-separator">·</span>
+          <button type="button" class="sample-chip" onclick="quickSearch('food')">food</button><span class="sample-separator">·</span>
+          <button type="button" class="sample-chip" onclick="quickSearch('pune')">Pune</button><span class="sample-separator">·</span>
+          <button type="button" class="sample-chip" onclick="quickSearch('vada')">vada</button><span class="sample-separator">·</span>
+          <button type="button" class="sample-chip" onclick="quickSearch('biryani')">biryani</button>
+        </div>
+        <div id="loadingStatus" class="loading-status" role="status" aria-live="polite" hidden>
+          <span class="spinner" aria-hidden="true"></span>
+          <span>Searching the little web...</span>
+        </div>
+      </div>
+
+      <!-- Message Area (for empty query or no results) -->
+      <div class="message-container" id="messageContainer"></div>
+    </header>
+
+    <section class="welcome-card" id="welcomeState" aria-label="Welcome">
+      <div class="welcome-mark" aria-hidden="true">g</div>
+      <div>
+        <h2>Six little pages. Two ways to find them.</h2>
+        <p>Try a search to compare keyword matching with a 100,000-move PageRank simulation.</p>
+      </div>
+    </section>
+
+    <!-- Results Area (Hidden until a search is executed) -->
+    <main id="resultsMain" style="display: none;">
+      <!-- Results summary line -->
+      <p class="results-summary" id="resultsSummary" aria-live="polite"></p>
+
+      <!-- AI Lab Insight Box explaining why PageRank works better than keyword stuffing -->
+      <div class="insight-box" id="insightBox" style="display: none;"></div>
+
+      <!-- Side-by-side Result Columns -->
+      <div class="results-columns">
+        
+        <!-- Left Column: Old Way -->
+        <section class="column" id="oldWaySection" aria-labelledby="oldWayHeading">
+          <div class="column-header old-way">
+            <span class="column-kicker">KEYWORD MATCH</span>
+            <h2 id="oldWayHeading">Traditional Search</h2>
+            <p>Ranked by keyword frequency</p>
+          </div>
+          <div id="oldWayList"></div>
+        </section>
+
+        <!-- Right Column: PageRank Way -->
+        <section class="column" id="pageRankSection" aria-labelledby="pageRankHeading">
+          <div class="column-header pagerank-way">
+            <span class="column-kicker">PAGE IMPORTANCE</span>
+            <h2 id="pageRankHeading">PageRank Algorithm</h2>
+            <p>Ranked by random surfer popularity</p>
+          </div>
+          <div id="pageRankList"></div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- =========================================================
+       JAVASCRIPT - Dataset, PageRank Simulation, and Search Logic
+       ========================================================= -->
+  <script>
+    // -----------------------------------------------------------
+    // SECTION 1: THE DATASET
+    // Six sample web pages with Page ID, title, URL, text, and outgoing links.
+    // -----------------------------------------------------------
+    const dataset = [
+      {
+        id: 1,
+        title: "Pune Food Guide",
+        url: "http://pune-food-guide.com",
+        text: "Where to eat in Pune - vada pav and biryani and pizza",
+        links: [2]
+      },
+      {
+        id: 2,
+        title: "Best Pizza Pune",
+        url: "http://best-pizza-pune.com",
+        text: "Fresh wood-fired pizza made daily - try our cheese pizza",
+        links: [1, 3]
+      },
+      {
+        id: 3,
+        title: "College Canteen Blog",
+        url: "http://college-canteen-blog.com",
+        text: "Student reviews of canteen food and chai and Friday pizza",
+        links: [2, 4]
+      },
+      {
+        id: 4,
+        title: "Pizza Recipes at Home",
+        url: "http://pizza-recipes-home.com",
+        text: "Make pizza at home - pizza dough and pizza sauce",
+        links: [2, 5]
+      },
+      {
+        id: 5,
+        title: "Cheap Eats Pune",
+        url: "http://cheap-eats-pune.com",
+        text: "Good food under 100 rupees - misal and dosa and pizza slices",
+        links: [2]
+      },
+      {
+        id: 6,
+        title: "Pizza Pizza Pizza",
+        url: "http://pizza-pizza-pizza.com",
+        text: "pizza pizza pizza pizza pizza pizza pizza pizza pizza pizza",
+        links: [1]
+      }
+    ];
+
+    // -----------------------------------------------------------
+    // SECTION 2: RANDOM SURFER PAGERANK ALGORITHM
+    // Runs once when the page loads. Simulates 100,000 steps of a random web surfer.
+    // -----------------------------------------------------------
+    function calculatePageRank() {
+      const TOTAL_MOVES = 100000;
+
+      // Initialize visit counts for each page ID to 0
+      const visits = {};
+      dataset.forEach(page => {
+        visits[page.id] = 0;
+      });
+
+      // Rule 1: Start on a randomly selected page
+      let currentSurferIndex = Math.floor(Math.random() * dataset.length);
+      let currentPage = dataset[currentSurferIndex];
+
+      // Rule 5: Initial starting position is NOT counted as a visit
+
+      // Rule 2: Perform exactly 100,000 moves
+      for (let move = 0; move < TOTAL_MOVES; move++) {
+        const hasOutgoingLinks = currentPage.links && currentPage.links.length > 0;
+
+        // Rule 3:
+        // - 15% probability: surfer jumps to a random page from entire dataset
+        // - 85% probability: surfer follows one random outgoing link
+        // - Rule 6: If a page has no outgoing links, treat that move as a random jump
+        const isRandomJump = Math.random() < 0.15 || !hasOutgoingLinks;
+
+        let destinationPage;
+        if (isRandomJump) {
+          // Jump to any random page in the dataset
+          const randomIndex = Math.floor(Math.random() * dataset.length);
+          destinationPage = dataset[randomIndex];
+        } else {
+          // Follow a randomly chosen outgoing link from the current page
+          const randomLinkIndex = Math.floor(Math.random() * currentPage.links.length);
+          const targetPageId = currentPage.links[randomLinkIndex];
+          destinationPage = dataset.find(p => p.id === targetPageId);
+        }
+
+        // Rule 4: Record one visit for the destination page
+        visits[destinationPage.id]++;
+
+        // Update current page for the next move
+        currentPage = destinationPage;
+      }
+
+      // Rule 7: Calculate PageRank (%) = (Number of visits / 100,000) * 100
+      dataset.forEach(page => {
+        page.visits = visits[page.id];
+        page.pageRank = (visits[page.id] / TOTAL_MOVES) * 100;
+      });
+
+      // Update UI badge to show PageRank is ready
+      const statusBadge = document.getElementById("statusBadge");
+      if (statusBadge) {
+        statusBadge.textContent = "PageRank ready · 100,000 moves";
+      }
+
+      // Log the precomputed PageRank values to developer console for lab review
+      console.log("=== PageRank Calculation Complete (100,000 moves) ===");
+      dataset.forEach(p => {
+        console.log(`Page ${p.id} [${p.url}]: ${p.visits} visits (${p.pageRank.toFixed(2)}%)`);
+      });
+    }
+
+    // -----------------------------------------------------------
+    // SECTION 3: WORD MATCHING & OCCURRENCE COUNTER
+    // Case-insensitive, matches whole words only (e.g. 'pizza' won't match 'pizzas').
+    // -----------------------------------------------------------
+    function countWordMatches(text, word) {
+      // Escape special regular expression characters
+      const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      // Use word boundaries (\b) to match complete words only, case-insensitively ('gi')
+      const regex = new RegExp(`\\b${escapedWord}\\b`, "gi");
+      const matches = text.match(regex);
+      return matches ? matches.length : 0;
+    }
+
+    // -----------------------------------------------------------
+    // SECTION 4: SEARCH & RANKING FUNCTION
+    // -----------------------------------------------------------
+    function performSearch(rawQuery) {
+      const messageContainer = document.getElementById("messageContainer");
+      const resultsMain = document.getElementById("resultsMain");
+      const welcomeState = document.getElementById("welcomeState");
+      const resultsSummary = document.getElementById("resultsSummary");
+      const insightBox = document.getElementById("insightBox");
+      const oldWayList = document.getElementById("oldWayList");
+      const pageRankList = document.getElementById("pageRankList");
+
+      // Reset message container
+      messageContainer.innerHTML = "";
+      welcomeState.hidden = true;
+
+      const query = rawQuery.trim();
+
+      // Error Handling 1: If search box is empty
+      if (!query) {
+        resultsMain.style.display = "none";
+        messageContainer.innerHTML = `
+          <div class="message-box message-warning">
+            Please enter a search word to begin searching.
+          </div>
+        `;
+        return;
+      }
+
+      // Find matching pages and count occurrences
+      const matchedPages = [];
+      dataset.forEach(page => {
+        const count = countWordMatches(page.text, query);
+        if (count > 0) {
+          // Create a copy of the page object with the occurrence count for this search
+          matchedPages.push({
+            id: page.id,
+            title: page.title,
+            url: page.url,
+            text: page.text,
+            links: page.links,
+            pageRank: page.pageRank,
+            count: count
+          });
+        }
+      });
+
+      // Error Handling 2: If no pages match
+      if (matchedPages.length === 0) {
+        resultsMain.style.display = "none";
+        messageContainer.innerHTML = `
+          <div class="message-box message-info">
+            No results found for "<strong>${escapeHtml(query)}</strong>". Try searching for <em>pizza</em>, <em>food</em>, <em>pune</em>, or <em>vada</em>.
+          </div>
+        `;
+        return;
+      }
+
+      // Show the results section
+      resultsMain.style.display = "block";
+      resultsMain.classList.remove("results-enter");
+      void resultsMain.offsetWidth;
+      resultsMain.classList.add("results-enter");
+      resultsSummary.innerHTML = `
+        Found <strong>${matchedPages.length}</strong> matching page${matchedPages.length === 1 ? '' : 's'} for "<strong>${escapeHtml(query)}</strong>"
+      `;
+
+      // ---------------------------------------------------------
+      // Ranking Method 1: "Old Way"
+      // - Sort by number of search-word occurrences descending
+      // - Tie-breaker: sort by page ID ascending
+      // ---------------------------------------------------------
+      const oldWayResults = [...matchedPages].sort((a, b) => {
+        if (b.count !== a.count) {
+          return b.count - a.count; // highest occurrence count first
+        }
+        return a.id - b.id; // tie-breaker: ascending page ID
+      });
+
+      // ---------------------------------------------------------
+      // Ranking Method 2: "PageRank Way"
+      // - Sort by PageRank percentage descending
+      // - Tie-breaker: sort by page ID ascending
+      // ---------------------------------------------------------
+      const pageRankResults = [...matchedPages].sort((a, b) => {
+        if (b.pageRank !== a.pageRank) {
+          return b.pageRank - a.pageRank; // highest PageRank first
+        }
+        return a.id - b.id; // tie-breaker: ascending page ID
+      });
+
+      // Render cards into both columns
+      renderResults(oldWayList, oldWayResults, "old");
+      renderResults(pageRankList, pageRankResults, "pagerank");
+
+      // AI Lab educational comparison note for queries like "pizza"
+      if (query.toLowerCase() === "pizza") {
+        insightBox.style.display = "block";
+        insightBox.innerHTML = `
+          <div class="insight-title">💡 AI Lab Insight: Why PageRank Beat Keyword Matching</div>
+          In the <strong>Old Way</strong>, Page 6 ranks #1 because it repeated "pizza" 10 times (keyword spamming).<br>
+          In the <strong>PageRank Way</strong>, Page 2 ranks #1 because trusted pages link to it, while Page 6 is pushed to the bottom because nobody links to it!
+        `;
+      } else {
+        insightBox.style.display = "none";
+      }
+    }
+
+    // -----------------------------------------------------------
+    // SECTION 5: CARD RENDERING
+    // Builds the HTML cards for Old Way and PageRank Way columns.
+    // -----------------------------------------------------------
+    function renderResults(container, results, mode) {
+      container.innerHTML = "";
+
+      results.forEach((page, index) => {
+        const card = document.createElement("div");
+        card.className = "result-card";
+        card.style.setProperty("--card-index", index);
+
+        // Display page ID and title (use page ID if title is not available)
+        const displayTitle = page.title ? `Page ${page.id}: ${page.title}` : `Page ${page.id}`;
+
+        // Metric badge: occurrences for Old Way, PageRank % for PageRank Way
+        let metricBadgeHtml = "";
+        if (mode === "old") {
+          metricBadgeHtml = `
+            <span class="metric-badge badge-old">
+              Matches: ${page.count} occurrence${page.count === 1 ? '' : 's'}
+            </span>
+          `;
+        } else {
+          metricBadgeHtml = `
+            <span class="metric-badge badge-pagerank">
+              PageRank ${page.pageRank.toFixed(2)}%
+            </span>
+            <div class="pagerank-meter" role="progressbar"
+              aria-label="Page ${page.id} PageRank"
+              aria-valuemin="0" aria-valuemax="100"
+              aria-valuenow="${page.pageRank.toFixed(2)}">
+              <span style="width: ${page.pageRank}%;"></span>
+            </div>
+          `;
+        }
+
+        // Outgoing links label for laboratory inspection
+        const outgoingLinksText = page.links && page.links.length > 0
+          ? `Links to Page ${page.links.join(', ')}`
+          : 'No outgoing links';
+
+        card.innerHTML = `
+          <div class="result-card-top">
+            <span class="page-badge">PAGE ${page.id}</span>
+            <h3 class="result-title">
+              <a href="${escapeHtml(page.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(displayTitle)}</a>
+            </h3>
+            <span class="result-rank-num" aria-label="Rank ${index + 1}">#${index + 1}</span>
+          </div>
+
+          <a class="result-url" href="${escapeHtml(page.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(page.url)}</a>
+
+          <div>${metricBadgeHtml}</div>
+
+          <p class="result-text">${escapeHtml(page.text)}</p>
+
+          <div class="result-links-info">Outgoing: ${outgoingLinksText}</div>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    // -----------------------------------------------------------
+    // SECTION 6: EVENT HANDLERS & HELPERS
+    // -----------------------------------------------------------
+
+    // Handles form submission via Search button or Enter key
+    function handleSearch(event) {
+      if (event) {
+        event.preventDefault(); // Prevent page reload
+      }
+      const searchInput = document.getElementById("searchInput");
+      queueSearch(searchInput.value);
+    }
+
+    // Quick search helper for clickable example chips
+    function quickSearch(word) {
+      const searchInput = document.getElementById("searchInput");
+      searchInput.value = word;
+      queueSearch(word);
+    }
+
+    let searchTimeout;
+
+    function queueSearch(query) {
+      const searchButton = document.getElementById("searchButton");
+      const loadingStatus = document.getElementById("loadingStatus");
+      clearTimeout(searchTimeout);
+      searchButton.disabled = true;
+      loadingStatus.hidden = false;
+      searchTimeout = setTimeout(() => {
+        try {
+          performSearch(query);
+        } finally {
+          searchButton.disabled = false;
+          loadingStatus.hidden = true;
+        }
+      }, 120);
+    }
+
+    // Simple HTML escaping helper to safely display user inputs and strings
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // -----------------------------------------------------------
+    // SECTION 7: INITIALIZATION ON PAGE LOAD
+    // Calculate PageRank once when the website loads.
+    // -----------------------------------------------------------
+    window.addEventListener("DOMContentLoaded", () => {
+      // Calculate PageRank once on page load (Requirement 8 & 9)
+      calculatePageRank();
+    });
+  </script>
+</body>
+</html>
